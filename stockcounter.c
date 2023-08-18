@@ -196,7 +196,7 @@ int counter_num_shares(const char *ticker) {
 // returns the total value of all the shares of ticker
 // requires: ticker is a null-terminated string (not asserted)
 // will return TICKER_NOT_FOUND if ticker is not present
-double counter_ticker_value(const char *ticker){
+double counter_ticker_value(const char *ticker) {
   assert(ticker);
   if (!counter_exists())
     counter_reset();
@@ -211,12 +211,11 @@ double counter_ticker_value(const char *ticker){
          fscanf(fp, "%s ,%d,%lf\n", cur_ticker, &shares, &price) == 3) {
     if (strcmp(ticker, cur_ticker) == 0) {
       fclose(fp);
-      return (double) shares * price;
+      return (double)shares * price;
     }
   }
   fclose(fp);
-  return (double) TICKER_NOT_FOUND;
-
+  return (double)TICKER_NOT_FOUND;
 }
 
 double counter_total_value() {
@@ -287,7 +286,7 @@ const char *tickerlist_nth(struct tickerlist *t, int n) {
 
 void tickerlist_destroy(struct tickerlist *t) {
   assert(t);
-  for (int i = 0; i < t->length; i++) {
+  for (int i = 0; i <= t->length; i++) {
     free((t->tickers)[i]);
   }
   free(t->tickers);

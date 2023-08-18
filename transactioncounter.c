@@ -260,8 +260,10 @@ int transaction_execute(const char *ticker, int n, double p, struct date *d,
                        &cur_num_shares, NULL);
       if (!found_date && date_compare(cur_d, d) > 0) {
         if (!buy && n > num_shares) {
+          date_destroy(cur_d);
           fclose(fp);
           fclose(temp);
+          remove(tempname);
           build_counter(false);
           return NOT_ENOUGH_SHARES;
         }
@@ -280,8 +282,10 @@ int transaction_execute(const char *ticker, int n, double p, struct date *d,
     }
     if (!found_date) {
       if (!buy && n > num_shares) {
+        date_destroy(cur_d);
         fclose(fp);
         fclose(temp);
+        remove(tempname);
         build_counter(false);
         return NOT_ENOUGH_SHARES;
       }
@@ -339,6 +343,7 @@ static void transaction_dividend(const char *ticker, double div, struct date *d,
         if (num_shares > 0)
           transaction_print(temp, ticker, num_shares, div, d, DIV, ex_d);
       } else if (cur_type == DIV && date_compare(cur_d, d) == 0) {
+        date_destroy(cur_d);
         fclose(fp);
         fclose(temp);
         remove(tempname);
@@ -354,9 +359,9 @@ static void transaction_dividend(const char *ticker, double div, struct date *d,
       }
       fputc('\n', temp);
     }
-    date_destroy(cur_d);
     if (!found_date && next_eof(fp) && num_shares > 0)
       transaction_print(temp, ticker, num_shares, div, d, DIV, ex_d);
+    date_destroy(cur_d);
     fclose(fp);
     fclose(temp);
     remove(cur_fname);
@@ -386,12 +391,14 @@ int transaction_stock_split(const char *ticker, int n, bool reverse) {
     else
       cur_fname = ticker_transaction_fname;
     FILE *fp = fopen(cur_fname, "r");
+    if (!fp)
+      return TICKER_NOT_FOUND;
     FILE *temp = fopen(tempname, "w");
     copy_header(fp, temp);
     while (!next_eof(fp)) {
       transaction_read(fp, &d, (char *)cur_tick, &type, NULL, &price, &shares,
                        NULL);
-      if (strcmp((const char *)cur_tick, ticker) == 0 ) {
+      if (strcmp((const char *)cur_tick, ticker) == 0) {
         found = 1;
         if (reverse) {
           shares /= n;
@@ -449,6 +456,10 @@ double calculate_cagr() {
     fclose(div_fp);
     dividend_delete();
   }
+  if(d)
+  date_destroy(d);
+  if(ex_d)
+  date_destroy(ex_d);
 
   char ticker_transaction_fname[MAX_TICKER_LENGTH + 4];
   const char *cur_fname;
@@ -466,9 +477,9 @@ double calculate_cagr() {
     // adds everything from the csv to the investment
     fp = fopen(cur_fname, "r");
     // if there's no file we return a default cagr
-    if (!fp) {
+    if (!fp){
       return cagr;
-    }
+  }
     copy_header(fp, NULL);
 
     struct investment *i = investment_create();
