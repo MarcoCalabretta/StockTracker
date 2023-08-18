@@ -368,10 +368,6 @@ int transaction_stock_split(const char *ticker, int n, bool reverse) {
   assert(ticker);
   assert(n >= 1);
 
-  FILE *fp = fopen(transaction_fname, "r");
-  FILE *temp = fopen(tempname, "w");
-  copy_header(fp, temp);
-
   char c;
   int shares;
   double price;
@@ -379,35 +375,49 @@ int transaction_stock_split(const char *ticker, int n, bool reverse) {
   struct date *d = NULL;
   int type;
   char cur_tick[MAX_TICKER_LENGTH];
-  while (!next_eof(fp)) {
-    transaction_read(fp, &d, (char *)cur_tick, &type, NULL, &price, &shares,
-                     NULL);
-    if (strcmp((const char *)cur_tick, ticker) == 0 && type != DIV) {
-      found = 1;
-      if (reverse) {
-        shares /= n;
-        price *= n;
+  char ticker_transaction_fname[MAX_TICKER_LENGTH + 4];
+  const char *cur_fname;
+  strcpy(ticker_transaction_fname, ticker);
+  strcat(ticker_transaction_fname, ".csv");
+  for (int i = 0; i < 2; i++) {
+    d = NULL;
+    if (i == 0)
+      cur_fname = transaction_fname;
+    else
+      cur_fname = ticker_transaction_fname;
+    FILE *fp = fopen(cur_fname, "r");
+    FILE *temp = fopen(tempname, "w");
+    copy_header(fp, temp);
+    while (!next_eof(fp)) {
+      transaction_read(fp, &d, (char *)cur_tick, &type, NULL, &price, &shares,
+                       NULL);
+      if (strcmp((const char *)cur_tick, ticker) == 0 ) {
+        found = 1;
+        if (reverse) {
+          shares /= n;
+          price *= n;
+        } else {
+          shares *= n;
+          price /= n;
+        }
+        transaction_print(temp, ticker, abs(shares), price, d, type, NULL);
+        while (fgetc(fp) != '\n')
+          ;
       } else {
-        shares *= n;
-        price /= n;
-      }
-      transaction_print(temp, ticker, abs(shares), price, d, type, NULL);
-      while (fgetc(fp) != '\n')
-        ;
-    } else {
-      c = fgetc(fp);
-      while (c != '\n') {
-        fputc(c, temp);
         c = fgetc(fp);
+        while (c != '\n') {
+          fputc(c, temp);
+          c = fgetc(fp);
+        }
+        fputc('\n', temp);
       }
-      fputc('\n', temp);
     }
+    date_destroy(d);
+    fclose(fp);
+    fclose(temp);
+    remove(cur_fname);
+    rename(tempname, cur_fname);
   }
-  date_destroy(d);
-  fclose(fp);
-  fclose(temp);
-  remove(transaction_fname);
-  rename(tempname, transaction_fname);
   build_counter(false);
   if (!found)
     return TICKER_NOT_FOUND;
