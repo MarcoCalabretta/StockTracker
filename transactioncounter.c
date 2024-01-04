@@ -42,17 +42,17 @@ static void transaction_print(FILE *fp, const char *ticker, int n, double p,
   fprintf(fp, "%s,%s ,", date, ticker);
   free(date);
   if (type == BUY)
-    fprintf(fp, S_BUY);
+    fprintf(fp, "%s", S_BUY);
   else if (type == SELL) {
-    fprintf(fp, S_SELL);
+    fprintf(fp, "%s", S_SELL);
     n = -n;
   } else
-    fprintf(fp, S_DIV);
+    fprintf(fp, "%s", S_DIV);
   fputc(',', fp);
   if (ex_d) {
     char *ex_date = malloc(DATE_LENGTH * sizeof(char));
     date_string(ex_d, ex_date);
-    fprintf(fp, ex_date);
+    fprintf(fp, "%s", ex_date);
     free(ex_date);
   }
   fputc(',', fp);
@@ -164,7 +164,6 @@ static void update_header(const char *cur_fname, double cagr, double tot) {
   cagr -= 1;
   cagr *= 100;
   fprintf(temp, "CAGR: %lf%%, Total Portfolio Value: $%lf\n", cagr, tot);
-  char c;
   while (!next_eof(fp))
     fputc(fgetc(fp), temp);
   fclose(fp);
@@ -349,8 +348,8 @@ static void transaction_dividend(const char *ticker, double div, struct date *d,
         remove(tempname);
         return;
       }
-      // if the tickers match, we have to update num_shares
-      if (strcmp(ticker, (const char *)cur_tick) == 0)
+      // if the tickers match and the transaction isn't a dividend, we have to update num_shares
+      if (strcmp(ticker, (const char *)cur_tick) == 0 && cur_type != DIV)
         num_shares += cur_num_shares;
       c = fgetc(fp);
       while (c != '\n') {
@@ -456,10 +455,10 @@ double calculate_cagr() {
     fclose(div_fp);
     dividend_delete();
   }
-  if(d)
-  date_destroy(d);
-  if(ex_d)
-  date_destroy(ex_d);
+  if (d)
+    date_destroy(d);
+  if (ex_d)
+    date_destroy(ex_d);
 
   char ticker_transaction_fname[MAX_TICKER_LENGTH + 4];
   const char *cur_fname;
@@ -477,9 +476,9 @@ double calculate_cagr() {
     // adds everything from the csv to the investment
     fp = fopen(cur_fname, "r");
     // if there's no file we return a default cagr
-    if (!fp){
+    if (!fp) {
       return cagr;
-  }
+    }
     copy_header(fp, NULL);
 
     struct investment *i = investment_create();
